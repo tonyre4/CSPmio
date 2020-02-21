@@ -41,17 +41,22 @@ def makeOrders(sol,univ):
     for i in range(minn): # genera las ordenes
         orders.append(sol.copy())
  
+    print ("Old")
     print (univ)
     #elimina elementos ya usados en las ordenes
     for i,c in enumerate(solUn):
-        idxs = np.where(univ==c)[:(solCnt*minn)]
-        cuts = np.delete(univ,idxs)
+        idxs = np.where(univ==c)
+        until = solCnt[i]*minn
+        #print(until)
+        idd = np.take(idxs,np.arange(until))
+        #print(idd)
+        univ = np.delete(univ,idd)
 
-    print(cuts)
-    idx = np.arange(cuts.shape[0])
+    print("New")
+    print(univ)
+    idx = np.arange(univ.shape[0])
 
-    exit()
-    return sobuniv
+    return univ
 
 class P:
     def __init__(me,sol,univ,st_size):
@@ -75,7 +80,6 @@ class P:
             Bcand = me
 
         if me.waste > 0.1:
-            me.combs = []
             for i in range(me.univ.shape[0]):
                 #print("Idx run:", i)
                 newsol = me.sol.copy()
@@ -89,17 +93,17 @@ class P:
                 newP = P(newsol,newuni,st)
                 if newP.deleteme:
                     del newP
-                if newP.optimal:
-                    makeOrders(newP.s,cuts[newP.univ])
+                #if newP.optimal:
+                #    makeOrders(newP.s,cuts[newP.univ])
 
         elif me.waste < 0:
             #me.pinfofail()
             me.deleteme = True
             pass
         else:
-            print("Optimal solution found!!!")
-            me.pinfo()
-            Bs.append(me)
+            #print("Optimal solution found!!!")
+            #me.pinfo()
+            #Bs.append(me)
             me.optimal = True
             #input()
 
@@ -115,7 +119,5 @@ class P:
 
 
 Pini = P([],idx,st)
-
-for s in Bs:
-    s.pinfo()
+Bcand.pinfo()
 
