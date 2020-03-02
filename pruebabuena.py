@@ -2,23 +2,13 @@ import numpy as np
 from scipy.optimize import minimize,brute
 from pulp import *
 
-#cuts = np.array([10. , 10.,10.,10.,10.,10.,10.,10.,10.,10.,10.,10.,10.
-#                ,10.,10.,10.,10.,10., 10., 10., 10., 10., 10., 10., 10., 10. ,11.
-#                ,1.,1.,1.,1.,1.,1.,1.,1.,1.,1.])
-cuts = np.array([2.4 , 1.1,10.,10.,10.,10.,10.,10.,10.,10.,10.,10.,10.
-                ,10.,12.5,10.,10.,10., 10., 10., 10., 10., 10., 10., 10., 10. ,11.
-                ,1.,1.,1.,19.19,1.,1.,1.,1.,1.,1.,19.19,11.6,45.3,64.3,7.4,88.2,4.4,55.5,9.2,1.4,5.6,33.6,77.5,
-                77.5,2.4,4.4,9.2,1.4,5.6,5.6,5.6,5.6,5.6,19.19,1.1,1.,1.1,1.1,10.1,10.1,10.1,10.1,10.1,10.1,10.1,88.2,88.2,88.2,8.2,88.2,88.2])
 
-cuts[::-1].sort()
+measUn = np.array([81.,84.,84.1,75.75,34.,46.5,79.5,79.,79.7,82.5,72.75,96.25,88.,93.875,83.5,80.,84.5,10.25,100.,93.,91.875,92.75])
+measCnt = np.array([2,27,24,23,11,45,48,48,48,41,54,28,5,23,46,31,33,31,32,22,17,40])
 
+print(measUn.shape[0])
 
-global measUn,measCnt
-
-measUn, measCnt = np.unique(cuts, return_counts=True)
-measCnt.astype(np.uint)
-s_size = 100.
-
+s_size = 192.
 
 measUn = np.flip(measUn)
 measCnt = np.flip(measCnt)
@@ -71,22 +61,47 @@ class cutSolver:
 
         print("Imprimiendo ordenes...")
 
+
+        prom_perc = 0.0
+        prom_perc2 = 0.0
+        num_tot = 0
+
+        st = 0.0
+        stp = 0.0
+
+
         for i,o in enumerate(me.ordersSimple):
             print("Orden %d:" % (i+1))
             print("Forma del corte:\n\t",end="")
             print(o[0])
             print("x%d ve" % o[1],end="")
+            num_tot += o[1]
             if o[1]==1:
                 print("z",end="\t")
             else:
                 print("ces",end="\t")
 
-            print("Sobrante: %f" % o[2])
+            print("Sobrante: %f = %f" % (o[2], o[3]), "%")
+
+            prom_perc += o[3]*o[1]
+            prom_perc2 += o[2]*o[1]
+            st += o[2]
+            stp += o[3]
 
             print("-"*70)
             print("")
 
 
+        prom_perc /= num_tot
+        prom_perc2 /= num_tot
+
+
+        print("Sobrante promedio: %f"%(prom_perc), end = "")
+        print("%")
+        print("Sobrante promedio ft: %f" % prom_perc2)
+
+        print("Sobrante total ft: %f\nSobrante total: %f" % (st,stp), end = "")
+        print("%")
 
 
     def getOrders(me,p=False):
@@ -115,7 +130,10 @@ class cutSolver:
             for i in range(times): # genera las ordenes
                 me.orders.append(oor)
 
-            me.ordersSimple.append([oor,times,me.stS-np.sum(np.array(oor))])
+            scrap = me.stS-np.sum(np.array(oor))
+            perc = scrap*100./me.stS
+
+            me.ordersSimple.append([oor,times,scrap,perc])
 
             rest = bs*times
             #rest = rest.astype(np.uint)
