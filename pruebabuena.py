@@ -6,12 +6,22 @@ from pulp import *
 measUn = np.array([81.,84.,84.1,75.75,34.,46.5,79.5,79.,79.7,82.5,72.75,96.25,88.,93.875,83.5,80.,84.5,10.25,100.,93.,91.875,92.75])
 measCnt = np.array([2,27,24,23,11,45,48,48,48,41,54,28,5,23,46,31,33,31,32,22,17,40])
 
-print(measUn.shape[0])
+#print(measUn.shape[0])
 
 s_size = 192.
 
 measUn = np.flip(measUn)
 measCnt = np.flip(measCnt)
+
+print("**Reporte de solicitud de cortes**")
+print("Numero de parte: 68-9306-40")
+print("-"*50)
+print("Tamaño del corte:     Cantidad de cortes:")
+
+for a,b in zip(measUn,measCnt):
+    print("%.3f" % (a) + "\t"*8 + str(b))
+
+print("#"*50)
 
 
 
@@ -57,9 +67,29 @@ class cutSolver:
 
         return np.array(XXX,np.uint)
 
+    def printRequ(me):
+        print("**Reporte de requisicion**")
+        print("-"*70)
+        print("Numero de parte: 68-9306-40")
+        print("-"*70)
+        
+        num_tot = 0
+
+        for i,o in enumerate(me.ordersSimple):
+            num_tot += o[1]
+
+        print("Total de Louvers:")
+        print("\t" + str(num_tot))
+        print("Total ft:")
+        print("\t" + str(me.stS*num_tot))
+        print("-"*70)
+        print("")
+
     def printOrders(me):
 
-        print("Imprimiendo ordenes...")
+        me.printRequ()
+        print("#"*50)
+        print("**Reporte de corrida**")
 
 
         prom_perc = 0.0
@@ -81,7 +111,7 @@ class cutSolver:
             else:
                 print("ces",end="\t")
 
-            print("Sobrante: %f = %f" % (o[2], o[3]), "%")
+            print("\t\tSobrante: %f = %f" % (o[2], o[3]), "%")
 
             prom_perc += o[3]*o[1]
             prom_perc2 += o[2]*o[1]
@@ -96,12 +126,11 @@ class cutSolver:
         prom_perc2 /= num_tot
 
 
-        print("Sobrante promedio: %f"%(prom_perc), end = "")
+        print("Sobrante promedio (por louver): %f"%(prom_perc), end = "")
         print("%")
-        print("Sobrante promedio ft: %f" % prom_perc2)
+        print("Sobrante promedio (por louver) en pulgadas: %f" % prom_perc2)
 
-        print("Sobrante total ft: %f\nSobrante total: %f" % (st,stp), end = "")
-        print("%")
+        print("Sobrante acumulado en %d louvers en pulgadas: %f -->  %f louvers" % (num_tot,st,st/me.stS))
 
 
     def getOrders(me,p=False):

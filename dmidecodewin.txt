@@ -1,0 +1,7 @@
+wmic path win32_computersystemproduct get uuid
+
+import subprocess
+current_machine_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
+print(current_machine_id)
+
+https://stackoverflow.com/questions/2461141/get-a-unique-computer-id-in-python-on-windows-and-linux
