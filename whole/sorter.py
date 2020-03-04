@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.optimize import minimize,brute
 from pulp import *
+from Rmaker import *
 
 
 class sortHandler:
@@ -13,7 +14,7 @@ class sortHandler:
         me.cntrs = me.cuts[:,1]
 
         me.printCutRep(P=True)
-        me.solv = cutSolver(me.meas,me.cntrs,me.stS)
+        me.solv = cutSolver(num_prt,me.meas,me.cntrs,me.stS)
     
 
     def printCutRep(me,P=False):
@@ -37,7 +38,8 @@ class sortHandler:
 
 class cutSolver:
 
-    def __init__(me,measures,counters,stockSize):
+    def __init__(me,num_prt,measures,counters,stockSize):
+        me.num_prt = num_prt
         me.orders = []
         me.ordersSimple = []
         me.stS = stockSize
@@ -95,8 +97,11 @@ class cutSolver:
         print("-"*70)
         print("")
 
-    def printOrders(me):
+    def pdfRun(me):
+        cutReport(me.num_prt,me.ordersSimple,"./reports/")
 
+    def printOrders(me):
+        me.pdfRun()
         me.printRequ()
         print("#"*50)
         print("**Reporte de corrida**")

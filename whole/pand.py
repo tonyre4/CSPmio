@@ -32,4 +32,6 @@ for p in parts:
 
 
     SS.sortHandler(192.,meas,p)
+    exit()
+
     
