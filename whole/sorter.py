@@ -42,6 +42,7 @@ class cutSolver:
         me.num_prt = num_prt
         me.orders = []
         me.ordersSimple = []
+        me.ordersForReport = []
         me.stS = stockSize
         me.measures = measures
         me.counters = counters.astype(np.uint)
@@ -79,6 +80,9 @@ class cutSolver:
 
         return np.array(XXX,np.uint)
 
+    def getReq(me):
+        return me.req
+
     def printRequ(me):
         print("**Reporte de requisicion**")
         print("-"*70)
@@ -96,6 +100,9 @@ class cutSolver:
         print("\t" + str(me.stS*num_tot))
         print("-"*70)
         print("")
+        me.totLouv = num_tot
+        me.ftTotLouv = num_tot*me.stS
+        me.req = [me.totLouv,me.ftTotLouv]
 
     def pdfRun(me):
         cutReport(me.num_prt,me.ordersSimple,"./reports/")
@@ -108,7 +115,7 @@ class cutSolver:
 
 
         prom_perc = 0.0
-        prom_perc2 = 0.0
+        prom_ft = 0.0
         num_tot = 0
 
         st = 0.0
@@ -120,7 +127,6 @@ class cutSolver:
             print("Forma del corte:\n\t",end="")
             print(o[0])
             print("x%d ve" % o[1],end="")
-            num_tot += o[1]
             if o[1]==1:
                 print("z",end="\t")
             else:
@@ -129,7 +135,7 @@ class cutSolver:
             print("\t\tSobrante: %f = %f" % (o[2], o[3]), "%")
 
             prom_perc += o[3]*o[1]
-            prom_perc2 += o[2]*o[1]
+            prom_ft += o[2]*o[1]
             st += o[2]
             stp += o[3]
 
@@ -137,8 +143,8 @@ class cutSolver:
             print("")
 
 
-        prom_perc /= num_tot
-        prom_perc2 /= num_tot
+        prom_perc /= me.totLouv
+        prom_ft /= me.totLouv
 
 
         print("Sobrante promedio (por louver): %f"%(prom_perc), end = "")
@@ -148,6 +154,9 @@ class cutSolver:
         print("Sobrante acumulado en %d louvers en pulgadas: %f -->  %f louvers" % (num_tot,st,st/me.stS))
         print("##"*25)
         print("\n\n")
+
+        me.meanScrapPercent = prom_perc
+        me.meanScrapft = prom_ft
 
     def getOrders(me,p=False):
         while np.sum(me.counters)>0:
@@ -176,9 +185,11 @@ class cutSolver:
                 me.orders.append(oor)
 
             scrap = me.stS-np.sum(np.array(oor))
+            isScrap = (scrap>0)
             perc = scrap*100./me.stS
 
             me.ordersSimple.append([oor,times,scrap,perc])
+            me.ordersForReport.append([])
 
             rest = bs*times
             #rest = rest.astype(np.uint)

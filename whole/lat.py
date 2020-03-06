@@ -6,17 +6,30 @@ import pylatex as pl
 
 
 
-def cutReport(data):
+def cutReport(num_part,data):
     
+    
+
+    space = 0.8
+
     s = ""
 
-    s+= """Reporte de cortes"""
+    s+= """\\begin{center}Reporte de cortes\\end{center}\\newline\\newline\bNumero de parte:
+        %s\\hline\\hline\\newline""" %(num_part)
+    
 
-    for c in data:
-        s+= """
-\\begin{tikzpicture}
+
+    for cut in data:
+        
+        s+= "x %d" % cut[0]
+
+        for c in cut[1]:
+            cc = c*space
+            s+= """\\begin{tikzpicture}
 \\draw (0,0) rectangle (%f\\linewidth,1) node[pos=0.5] {Test};
-\\end{tikzpicture}""" % c
+\\end{tikzpicture}""" % cc
+
+        s+="\\hline\\newline"
 
 
     doc = Document()
@@ -26,4 +39,4 @@ def cutReport(data):
 
     print (s)
 
-cutReport([0.5,0.1,0.1,0.2,0.15,0.15,])
+cutReport("6050",[[20,[0.5,0.1,0.1,0.2,0.15,0.15],[0.0,0.0]],[21,[0.1,0.1,0.1],[0.1,17.0]]])
