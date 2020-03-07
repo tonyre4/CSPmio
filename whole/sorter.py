@@ -5,40 +5,27 @@ from Rmaker import *
 
 
 class sortHandler:
-    def __init__(me,st_size,cuts,num_prt):
+    def __init__(me,st_size,cuts,num_prt,path_r):
         me.np = num_prt
         me.stS = st_size
         me.cuts = cuts
+        me.pr = path_r
 
         me.meas = me.cuts[:,0]
         me.cntrs = me.cuts[:,1]
 
-        me.printCutRep(P=True)
-        me.solv = cutSolver(num_prt,me.meas,me.cntrs,me.stS)
+        #me.printCutRep(p=True)
+        me.path_r = path_r
+        me.solv = cutSolver(num_prt,me.meas,me.cntrs,me.stS,path_r)
     
-
-    def printCutRep(me,P=False):
-
-        s = "**Reporte de solicitud de cortes**\n"
-        s += "Numero de parte: %s\n" % me.np
-        s += str("-"*50) + "\n"
-        s += "Tamaño del corte:     Cantidad de cortes:\n"
-
-        for a,b in zip(me.meas,me.cntrs):
-            s += "%.3f" % (a) + "\t"*8 + str(b) + "\n"
-
-        s += str("#"*50) + "\n"
-
-        if P:
-            print(s)
-
-        me.cutR = s
-
+    def getReq(me):
+        return me.solv.getReq()
 
 
 class cutSolver:
 
-    def __init__(me,num_prt,measures,counters,stockSize):
+    def __init__(me,num_prt,measures,counters,stockSize,path_r):
+        me.path_r = path_r
         me.num_prt = num_prt
         me.orders = []
         me.ordersSimple = []
@@ -47,10 +34,12 @@ class cutSolver:
         me.measures = measures
         me.counters = counters.astype(np.uint)
         me.getOrders()
-        #print(me.orders)
         me.printOrders()
 
 
+    #Algorimtmo optimizador
+    ########################
+    ########################
     def getBest(me):
         prob = LpProblem("Cut_problem",LpMaximize)
 
@@ -79,85 +68,7 @@ class cutSolver:
                 pass
 
         return np.array(XXX,np.uint)
-
-    def getReq(me):
-        return me.req
-
-    def printRequ(me):
-        print("**Reporte de requisicion**")
-        print("-"*70)
-        print("Numero de parte: 68-9306-40")
-        print("-"*70)
-        
-        num_tot = 0
-
-        for i,o in enumerate(me.ordersSimple):
-            num_tot += o[1]
-
-        print("Total de Louvers:")
-        print("\t" + str(num_tot))
-        print("Total ft:")
-        print("\t" + str(me.stS*num_tot))
-        print("-"*70)
-        print("")
-        me.totLouv = num_tot
-        me.ftTotLouv = num_tot*me.stS
-        me.req = [me.totLouv,me.ftTotLouv]
-
-    def pdfRun(me):
-        cutReport(me.num_prt,me.ordersSimple,"./reports/")
-
-    def printOrders(me):
-        me.pdfRun()
-        me.printRequ()
-        print("#"*50)
-        print("**Reporte de corrida**")
-
-
-        prom_perc = 0.0
-        prom_ft = 0.0
-        num_tot = 0
-
-        st = 0.0
-        stp = 0.0
-
-
-        for i,o in enumerate(me.ordersSimple):
-            print("Orden %d:" % (i+1))
-            print("Forma del corte:\n\t",end="")
-            print(o[0])
-            print("x%d ve" % o[1],end="")
-            if o[1]==1:
-                print("z",end="\t")
-            else:
-                print("ces",end="\t")
-
-            print("\t\tSobrante: %f = %f" % (o[2], o[3]), "%")
-
-            prom_perc += o[3]*o[1]
-            prom_ft += o[2]*o[1]
-            st += o[2]
-            stp += o[3]
-
-            print("-"*70)
-            print("")
-
-
-        prom_perc /= me.totLouv
-        prom_ft /= me.totLouv
-
-
-        print("Sobrante promedio (por louver): %f"%(prom_perc), end = "")
-        print("%")
-        print("Sobrante promedio (por louver) en pulgadas: %f" % prom_perc2)
-
-        print("Sobrante acumulado en %d louvers en pulgadas: %f -->  %f louvers" % (num_tot,st,st/me.stS))
-        print("##"*25)
-        print("\n\n")
-
-        me.meanScrapPercent = prom_perc
-        me.meanScrapft = prom_ft
-
+    
     def getOrders(me,p=False):
         while np.sum(me.counters)>0:
             bs = me.getBest()
@@ -187,9 +98,10 @@ class cutSolver:
             scrap = me.stS-np.sum(np.array(oor))
             isScrap = (scrap>0)
             perc = scrap*100./me.stS
+            percs = [x/me.stS for x in oor]
 
             me.ordersSimple.append([oor,times,scrap,perc])
-            me.ordersForReport.append([])
+            me.ordersForReport.append([oor,percs,isScrap,times,scrap,perc])
 
             rest = bs*times
             #rest = rest.astype(np.uint)
@@ -205,5 +117,112 @@ class cutSolver:
                 print(app)
                 print("Scrap:")
                 print(me.stS-app)
+
+    ###########################################
+    ###########################################
+    
+    ##Reportes
+    def printRequ(me, p = False):
+        num_tot = 0
+
+        for i,o in enumerate(me.ordersSimple):
+            num_tot += o[1]
+        
+        me.totLouv = num_tot
+        me.ftTotLouv = num_tot*me.stS
+        me.req = [me.totLouv,me.ftTotLouv]
+        
+        if p:
+            print("**Reporte de requisicion**")
+            print("-"*70)
+            print("Numero de parte: 68-9306-40")
+            print("-"*70)
+            print("Total de Louvers:")
+            print("\t" + str(num_tot))
+            print("Total ft:")
+            print("\t" + str(me.stS*num_tot))
+            print("-"*70)
+            print("")
+
+    def getReq(me):
+        try:
+            return me.req
+        except:
+            me.printRequ()
+            return me.req
+
+    def pdfRun(me):
+        cutReport(me.num_prt,me.ordersForReport,"./reports/")
+
+    def printOrders(me,p = False, gr = True):
+        me.printRequ()
+
+        r = "#"*50 +"\n"
+        r += "**Reporte de corrida**\n"
+        r += "Numero de parte: %s\n" % me.num_prt
+        r += "#"*50 +"\n"
+        r += "#"*50 +"\n"
+
+        #Inits
+        prom_perc = 0.0
+        prom_ft = 0.0
+        num_tot = 0
+        st = 0.0
+        stp = 0.0
+
+        sss = ""
+
+        for i,o in enumerate(me.ordersSimple):
+            prom_perc += o[3]*o[1]
+            prom_ft += o[2]*o[1]
+            st += o[2]
+            stp += o[3]
+
+        
+            ss = "Patron %d:\n" % (i+1)
+            ss += "Forma del corte:\n\t"
+            ss += str(o[0]) + "\n"
+            ss += "x%d ve" % o[1]
+
+            if o[1]==1:
+                ss += "z\t"
+            else:
+                ss += "ces\t"
+            ss += "\t\tSobrante: %f = %f%%\n" % (o[2], o[3])
+            ss += "-"*70 + "\n\n"
+
+            sss += ss
+
+            if p:
+                print(ss)
+
+
+        prom_perc /= me.totLouv
+        prom_ft /= me.totLouv
+        me.scrapLouvers = st/me.stS
+        
+        me.meanScrapPercent = prom_perc
+        me.meanScrapft = prom_ft
+        me.sumScrapft = st
+
+        r += "Material: %d Louvers\nMaterial acumulado: %.2fin\n" % (me.totLouv,me.totLouv*me.stS)     
+
+        #r += "Sobrante promedio (por louver): %f%%\n"%(me.meanScrapPercent)
+        r += "Sobrante promedio (por louver) en pulgadas: %.2fin --> %.2f%%\n" % (me.meanScrapft, me.meanScrapPercent)
+
+        r += "Sobrante acumulado en %d louvers: %.2fin -->  %.2f louvers\n" % (me.totLouv,me.sumScrapft,me.scrapLouvers)
+        r += "#"*50 + "\n"
+
+        r += sss
+
+        if p:
+            print(r)
+        if gr:
+            n_file = "%s%s_cutReport.txt" % (me.path_r, me.num_prt)
+            with open(n_file,"w") as f:
+                f.write(r)
+
+        #me.pdfRun()
+
 
 

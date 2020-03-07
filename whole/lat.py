@@ -15,7 +15,7 @@ def cutReport(num_part,data):
     s = ""
 
     s+= """\\begin{center}Reporte de cortes\\end{center}\\newline\\newline\bNumero de parte:
-        %s\\hline\\hline\\newline""" %(num_part)
+        %s\\hline\\hline\\newline\\newline""" %(num_part)
     
 
 
