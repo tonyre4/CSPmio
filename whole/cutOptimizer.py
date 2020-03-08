@@ -3,6 +3,18 @@ import pandas as pd
 import numpy as np
 import sys
 
+def printReq(mat):
+    with open("req.txt", "w+") as f:
+        f.write("**Requisicion de materiales**\n" + "##"*25 + "\n")
+        f.write("Numero de parte\tQty\tTot ft\n")
+        for p in mat:
+            s = p[0] + "\t" + "%d"%(p[1][0]) + "\t" +  "%.2f"%(p[1][1]) + "\n"
+            f.write(s)
+
+        f.write("##" *25)
+
+
+
 
 np.seterr(divide='ignore')
 
@@ -33,7 +45,7 @@ if __name__ == "__main__":
     lll = len(parts)
     reqs = []
     for i,pp in enumerate(parts):
-        
+   
         p = pp.encode("ascii", errors="ignore").decode().replace(" ","")
 
         print("Computando solución para numero de parte %s\n%d de %d" % (p,i+1,lll))
@@ -53,6 +65,7 @@ if __name__ == "__main__":
         A = SS.sortHandler(192.,meas,p,path_r)
         reqs.append([p,A.getReq()])
     
+    printReq(reqs)
         #exit()
 
     
