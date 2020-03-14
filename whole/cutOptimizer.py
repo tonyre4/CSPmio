@@ -6,14 +6,12 @@ import sys
 def printReq(mat):
     with open("req.txt", "w+") as f:
         f.write("**Requisicion de materiales**\n" + "##"*25 + "\n")
-        f.write("Numero de parte\tQty\tTot ft\n")
+        f.write("Numero de parte\t\tQty\t\tTot ft\t\t%\n")
         for p in mat:
-            s = p[0] + "\t" + "%d"%(p[1][0]) + "\t" +  "%.2f"%(p[1][1]) + "\n"
+            s = p[0] + "\t\t" + "%d"%(p[1][0]) + "\t\t" +  "%.2f"%(p[1][1]) + "\t\t" + "%.2f%%"%(p[1][2]) + "\n"
             f.write(s)
 
         f.write("##" *25)
-
-
 
 
 np.seterr(divide='ignore')
@@ -35,7 +33,7 @@ if __name__ == "__main__":
     sl = data.dropna(axis=0, subset=['TrackWidthNumeric'])
     
     #color,track_width,qty_cuts
-    din = sl.loc[:,["LouverComponentNumber","TrackWidthNumeric","LouverQty"]].copy()
+    din = sl.loc[:,["WorkOrderNumber","LouverComponentNumber","TrackWidthNumeric","LouverQty","ValanceInsert ComponentNumber","ValanceBaseWidthNumeric"]].copy()
    
     #obtener numeros de parte
     req = [] #lista de requisición
@@ -50,19 +48,10 @@ if __name__ == "__main__":
 
         print("Computando solución para numero de parte %s\n%d de %d" % (p,i+1,lll))
 
-        cuts = din.loc[din["LouverComponentNumber"]== pp ,["TrackWidthNumeric","LouverQty"]]
-        #Valores de cortes ordenados
-        twn = sorted(np.array(cuts.TrackWidthNumeric.unique()))
-        
-        #Obteniendo el total de cortes por cada medida
-        meas = np.empty((0,2))
-        for w in twn:
-        
-            s = cuts.loc[cuts['TrackWidthNumeric']==w].sum()
-            meas = np.vstack([meas,[w,s.iloc[1]]])
-    
+        cuts = din.loc[din["LouverComponentNumber"]== pp ,["WorkOrderNumber","TrackWidthNumeric","LouverQty", "ValanceInsert ComponentNumber","ValanceBaseWidthNumeric"]]
+
         #Corre optimizador
-        A = SS.sortHandler(192.,meas,p,path_r)
+        A = SS.sortHandler(192.,cuts,p,path_r)
         reqs.append([p,A.getReq()])
     
     printReq(reqs)
