@@ -8,7 +8,15 @@ class ordenes:
     def __init__(me,pers,num_prt):
         me.persianas = pers
         me.np = num_prt
+        me.nps = me.np.split("-")
+        me.color = me.nps[1]
+        if me.nps[2]=="40":
+            me.LouverLong = 192.
+        else:
+            me.LouverLong = 82.5
+
         me.ps = []
+        me.slotCtr = 0
 
         for i,p in me.persianas.iterrows():
             me.ps.append(persiana(p,me.np))
@@ -17,6 +25,7 @@ class ordenes:
 
     def computeCuts(me):
         cuts = np.array(me.persianas.loc[:,["TrackWidthNumeric", "LouverQty"]])
+        
 
         #agregando valances
         for p in me.ps:
@@ -24,10 +33,7 @@ class ordenes:
                 cuts = np.vstack([cuts,[p.getVW(),1]])
             else:
                 if not p.Vbool is None:
-                    print("ATENCIÓN!. El numero de parte del Valance de X no es el mismo que del louver. Este programa aún no está preparado para esta combinación!")
-                    print(p.Vbool)
-                    print(p.Vnp)
-                    print(p.np)
+                    print("ATENCIÓN!. El color del Valance de X no es el mismo que del louver. Este programa aún no está preparado para esta combinación!")
         
 
         #Valores de cortes ordenados
@@ -38,39 +44,158 @@ class ordenes:
             s = np.sum(cuts[np.where(cuts[:,0]==w),1])
             meas = np.vstack([meas,[w,s]])
 
+        #print("Cuts:")
+        #print(cuts)
+        #print("Unique")
+        #print(twn)
+        #print("Sum:")
+        #print(meas)
+
         me.computedCuts = meas
         return meas
 
+    def buscarCorte(me,corte):
+        acaba = False
+
+        for p in me.ps:
+            if p.setCut(corte):
+                if p.slot == -1:
+                    p.slot = int(me.slotCtr%10)+1
+                    p.car = int(me.slotCtr/10)+1
+                    me.slotCtr += 1
+                if p.RDY:
+                    #print("Aqui termina la orden del slot ", p.slot," del carro ", p.car)
+                    acaba = True
+                me.slotternow.append(p.slot)
+                break
+        else:
+            print("Error!, No se encontró el corte")
+            exit()
+        #print("Corte:",corte)
+        #print("Slot:", p.slot)
+        #print("Carro:", p.car)
+        return acaba
+
+    def printReport(me, optimizado):
+        me.slotterpast = []
+        me.slotternow = []
+        me.terminados = []
+        me.veces = 0
+
+        #print(me.cuts)
+
+        for o in optimizado:
+            #print("Para el corte:", o["cortes"])
+            me.veces = 0
+            me.slotterpast = []
+            for i in range(o["veces"]):
+                impreso = False
+                me.terminados = []
+                me.slotternow = []
+                for c in o["cortes"]:
+                    me.terminados.append(me.buscarCorte(c))
+                me.veces += 1
+                if me.slotterpast != []:
+                    #if me.slotterpast != me.slotternow or any(me.terminados):
+                    if any(me.terminados):
+                        #if me.slotterpast != me.slotternow:
+                        #    me.printForma(o["cortes"], me.veces-1, me.slotterpast,None)
+                        #    impreso = True
+                        #    me.veces = 1
+                        #else:
+                            me.printForma(o["cortes"], me.veces, me.slotternow, None)
+                            impreso = True
+                            me.veces = 0
+
+                me.slotterpast = me.slotternow
+            else:
+                if not impreso:
+                    me.printForma(o["cortes"], me.veces, me.slotternow, None)
+
+    def printForma(me, patron, veces, slots, carro):
+        ss =  "Patron:\t" + str(patron) + "\n"
+        ss += "Slots: \t["
+        for i, s in enumerate(slots):
+            if me.terminados[i]:
+                z = "* "
+            else:
+                z = " "
+            ss += str(s) + z
+        ss +="]\n"
+        ss += "Carro:" + "\n"
+        ss += "Veces:  x%d" % veces + "\n\n"
+
+        print(ss)
+
+
 
 class persiana:
-    def __init__(me,feats,np):
+    def __init__(me, feats, np):
         me.feats = feats
         me.np = np
+        me.nps = me.np.split("-")
+        me.color = me.nps[1]
+        
+        me.Lqty = me.feats.loc["LouverQty"] #Cantidad de louvers
+        me.Lmeas = me.feats.loc["TrackWidthNumeric"] #Medida de louvers
+
+        me.slot = -1 #Slot
+        me.car = -1 #Carro
+
+        me.Lqtymade = 0 #Lo que ya se hizo
+
+        me.RDY = False  #si la persiana esta lista
+
+        
+        if me.nps[2] == "40":
+            me.LouverLong = 192.
+        else:
+            me.LouverLong = 82.5
+
         try:
             me.Vnp = feats.loc["ValanceInsert ComponentNumber"].encode("ascii", errors="ignore").decode().replace(" ","")
-            me.Vbool = me.Vnp == me.np
+            me.Vnps = me.np.split("-")
+            me.Vcolor = me.Vnps[1]
+            if me.Vnps[2] == "40":
+                me.ValanceLong = 192.
+            else:
+                me.ValanceLong = 82.5
+            me.Vbool = me.Vcolor == me.color
+            me.Vmeas = me.feats.loc["ValanceBaseWidthNumeric"]
+            me.Vmade = 0
         except:
             me.Vnp = None
             me.Vbool = None
+            me.Vmade = None
+            me.Vmeas = None
+
+    def setCut(me,corte):
+        if not me.RDY:
+            aff = False
+            if me.Lmeas == corte:
+                me.Lqtymade += 1
+                aff = True
+            else:
+                if me.Vmade == 0:
+                    if me.Vmeas == corte:
+                        me.Vmade = 1
+                        aff = True
+
+            me.isReady()
+            return aff
+        else:
+            return False
+
+
+    def isReady(me):
+        if not (me.Vmade is None):
+            me.RDY = me.Vmade == 1 and me.Lqty == me.Lqtymade
+        else:
+            me.RDY = me.Lqty == me.Lqtymade
     
     def getVW(me):
-        return me.feats.loc["ValanceBaseWidthNumeric"]
+        return me.Vmeas
 
-class carro:
-    def __init__(me,ords,idx):
-        me.idx = idx
-        num_slots = 10
-        me.ords = ords
-        me.slots = []
-
-        for i,o in enumerate(me.ords):
-            me.slots.append(slot(i))
-
-class slot:
-    def __init__(me,tam,qty,idx):
-        me.tam = tam
-        me.qty = qty
-        me.rdy = False
 
 
 class sortHandler:
@@ -89,7 +214,11 @@ class sortHandler:
         me.ordersForReport = []
         me.stS = stockSize
         me.getOrders()
-        me.printOrders()
+        #me.printOrders()
+        pd.set_option('display.max_columns', None)
+        pd.set_option('display.max_colwidth', -1)
+        print(me.cuts)
+        me.ordhand.printReport(me.ordersSimple)
 
 
     #Algorimtmo optimizador
@@ -238,10 +367,9 @@ class sortHandler:
 
         for i,o in enumerate(me.ordersSimple):
 
-            print(o)
+            #print(o)
 
-            print(me.cuts)
-            exit()
+            #print(me.cuts)
 
 
             prom_perc += o["scrap"]*o["Porcentaje"] #acumulado de porcentajes de desperdicio
