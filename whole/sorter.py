@@ -76,6 +76,52 @@ class ordenes:
         #print("Carro:", p.car)
         return acaba
 
+    def printReport2(me, optimizado):
+        opti = optimizado.copy()
+
+        for ip,p in enumerate(me.ps):
+            print("Computando orden %d" % ip)
+            while not p.RDY:
+                ##Encontrar el mejor de todos los cortes que puede llenar el pedido
+                maxoc = 0
+                maxind = None
+                for ii,o in enumerate(opti):
+                    if o["veces"]==0:
+                        continue
+                    if p.Lmeas in o["cortes"]:
+                        cnt = o["cortes"].count(p.Lmeas)
+                        if maxoc<cnt:
+                            maxind = ii
+                ##Ya encontrado ahora hay que ir bajando las veces en cada corte
+                try:
+                    mc = opti[maxind]
+                except:
+                    print(p.Lqty,p.Lqtymade)
+                    exit()
+
+                for i in range(mc["veces"]):
+                    for c in mc["cortes"]:
+                        if c == p.Lmeas: #Si es un corte de la persiana
+                            p.Lqtymade += 1
+                            p.isReady()
+                        elif c == p.Vmeas and p.Vmade == 0: ## Por si encuentra el valance
+                            p.Vmade = 1
+                            p.isReady()
+                        else: # Buscar de quien es
+                            for ii,pp in enumerate(me.ps):
+                                if ii==ip:
+                                    continue
+                                if pp.Lmeas == c:
+                                    p.Lqtymade += 1
+                                    pp.isReady()
+                                elif c == pp.Vmeas and pp.Vmade == 0:
+                                    pp.Vmade = 1
+                                    p.isReady()
+                    mc["veces"] -= 1
+                    if p.RDY:
+                        break
+
+
     def printReport(me, optimizado):
         me.slotterpast = []
         me.slotternow = []
@@ -85,6 +131,7 @@ class ordenes:
         #print(me.cuts)
 
         for o in optimizado:
+            me.o = o
             #print("Para el corte:", o["cortes"])
             me.veces = 0
             me.slotterpast = []
@@ -94,26 +141,32 @@ class ordenes:
                 me.slotternow = []
                 for c in o["cortes"]:
                     me.terminados.append(me.buscarCorte(c))
-                me.veces += 1
-                if me.slotterpast != []:
-                    #if me.slotterpast != me.slotternow or any(me.terminados):
-                    if any(me.terminados):
-                        #if me.slotterpast != me.slotternow:
-                        #    me.printForma(o["cortes"], me.veces-1, me.slotterpast,None)
-                        #    impreso = True
-                        #    me.veces = 1
-                        #else:
-                            me.printForma(o["cortes"], me.veces, me.slotternow, None)
-                            impreso = True
-                            me.veces = 0
 
-                me.slotterpast = me.slotternow
+                if me.slotterpast != []:
+                    if me.slotterpast == me.slotternow:
+                        me.veces += 1
+                    else:
+                        if me.veces != 0:
+                            me.printForma(o["cortes"], me.veces, me.slotterpast, None)
+                        impreso = True
+                        me.veces = 1
+
+                    if any(me.terminados) and not impreso:
+                        if me.veces != 0:
+                            me.printForma(o["cortes"], me.veces, me.slotternow, None)
+                        impreso = True
+                        me.veces = 0
+                else:
+                    me.veces += 1
+
+                me.slotterpast = me.slotternow.copy()
             else:
                 if not impreso:
-                    me.printForma(o["cortes"], me.veces, me.slotternow, None)
+                    if me.veces != 0:
+                        me.printForma(o["cortes"], me.veces, me.slotternow, None)
 
     def printForma(me, patron, veces, slots, carro):
-        ss =  "Patron:\t" + str(patron) + "\n"
+        ss =  "Patron:\t" + str(patron) + " --- [//%.2f//] -> %.2f%%\n" % (me.o["scrap"], me.o["Porcentaje"])
         ss += "Slots: \t["
         for i, s in enumerate(slots):
             if me.terminados[i]:
@@ -121,7 +174,7 @@ class ordenes:
             else:
                 z = " "
             ss += str(s) + z
-        ss +="]\n"
+        ss = ss[:-1] + "]\n"
         ss += "Carro:" + "\n"
         ss += "Veces:  x%d" % veces + "\n\n"
 
@@ -201,7 +254,7 @@ class persiana:
 class sortHandler:
     def __init__(me,stockSize,cuts,num_prt,path_r):
         me.num_prt = num_prt
-        me.cuts = cuts
+        me.cuts = cuts.sort_values(by=["LouverQty"])
         me.ordhand = ordenes(me.cuts,me.num_prt)
 
         meas = me.ordhand.computeCuts()
@@ -218,7 +271,7 @@ class sortHandler:
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_colwidth', -1)
         print(me.cuts)
-        me.ordhand.printReport(me.ordersSimple)
+        me.ordhand.printReport2(me.ordersSimple)
 
 
     #Algorimtmo optimizador
