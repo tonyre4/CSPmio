@@ -3,6 +3,12 @@ from scipy.optimize import minimize,brute
 from pulp import *
 from Rmaker import *
 import pandas as pd
+import ctypes
+
+class optiti:
+    def __init__(me,dictt):
+        me.mydict = dictt
+
 
 class ordenes:
     def __init__(me,pers,num_prt):
@@ -75,6 +81,29 @@ class ordenes:
         #print("Slot:", p.slot)
         #print("Carro:", p.car)
         return acaba
+    
+    def buscarCorte2(me,corte):
+        acaba = False
+
+        for p in me.ps:
+            if p.setCut(corte):
+                if p.slot == -1:
+                    p.slot = int(me.slotCtr%10)+1
+                    p.car = int(me.slotCtr/10)+1
+                    me.slotCtr += 1
+                if p.RDY:
+                    #print("Aqui termina la orden del slot ", p.slot," del carro ", p.car)
+                    acaba = True
+                me.slotter.append(p.slot)
+                me.carr.append(p.car)
+                break
+        else:
+            print("Error!, No se encontró el corte")
+            exit()
+        #print("Corte:",corte)
+        #print("Slot:", p.slot)
+        #print("Carro:", p.car)
+        return acaba
 
     def printReport2(me, optimizado):
         opti = optimizado.copy()
@@ -120,6 +149,102 @@ class ordenes:
                     mc["veces"] -= 1
                     if p.RDY:
                         break
+
+    def printReport3(me, optimizado):
+
+        TODO = [] # D:
+
+        obs = []
+
+        for o in optimizado:
+            oo = optiti(o)
+            obs.append(oo)
+            for i in range(o["veces"]):
+                me.slotter = []
+                me.carr = []
+                for c in o["cortes"]:
+                    me.buscarCorte2(c)
+                me.slotter = tuple(me.slotter)
+                me.carr = tuple(me.carr)
+                TODO.append((oo,me.slotter,me.carr))
+        
+        unique = set(TODO)
+
+        idxs = []
+        objs = []
+        sl = []
+        cr = []
+        v = []
+        carord = []
+        slotord = []
+
+        cols = ["idx", "obj", "slots", "carro", "veces", "carord", "slotord"]
+
+        for i,u in enumerate(unique):
+            c = TODO.count(u)
+            #print(u[0].mydict["cortes"], "\t\t" ,u[1],u[2], c)
+            idxs.append(i)
+            objs.append(u[0])
+            sl.append(u[1])
+            cr.append(u[2])
+            v.append(c)
+            carord.append(sum(u[2])-len(u[2]))
+            slotord.append(sum(u[1]) - len(u[1]))
+
+        data = {cols[0] : idxs,
+                cols[1] : objs,
+                cols[2] : sl,
+                cols[3] : cr,
+                cols[4] : v,
+                cols[5] : carord,
+                cols[6] : slotord}
+
+        df = pd.DataFrame(data, columns = cols)
+
+
+        df = df.sort_values(by=['carord','slotord'])
+
+        maxc = int(me.slotCtr/10)
+        maxs = []
+        for i in range(maxc):
+            if i != maxc:
+                maxs.append(10)
+        else:
+            c = int(me.slotCtr%10)
+            if c!= 0:
+                maxs.append(int(me.slotCtr%10))
+       
+
+        #for i,ms in enumerate(maxs):
+        #    print("Para carro", i+1)
+        #    if i==0: #Si es el primero
+        #        print(df[df['carro'].apply(lambda x: i+1 == x[0] and all(y == x[0] for y in x) )]) # los exclusivos del primer carro
+        #        print(df[df['carro'].apply(lambda x: i+1 is in x and any(y >  i+1  for y in x) )]) #los que tengan al carro 1 mayores que 1
+        #    elif i+1==len(maxs): #si es el último
+        #        print("Para carro", i+1)
+        #        print(df[df['carro'].apply(lambda x: i+1 == x[0] and all(y == x[0] for y in x) )])
+        #    else: #Si no es el último
+        #        print(df[df['carro'].apply(lambda x: i+1 is in x and any(y >  i+1  for y in x) )]) #los que tengan al carro 1
+        #        print(df[df['carro'].apply(lambda x: i+1 == x[0] and all(y == x[0] for y in x) )]) # los exclusivos del primer carro
+        #        print(df[df['carro'].apply(lambda x: i+1 is in x and any(y >  i+1  for y in x) )]) #los que tengan al carro 1 y los que siguen
+            
+        
+        terminos = []
+
+        for i in range(maxc):
+            for ii in maxs[i]:
+                for r in df.iterable():
+                    for iii in range(len(r["slots"])):
+                        if  
+            
+
+        print(df)
+
+
+        #Orden por carros
+
+
+
 
 
     def printReport(me, optimizado):
@@ -271,7 +396,7 @@ class sortHandler:
         pd.set_option('display.max_columns', None)
         pd.set_option('display.max_colwidth', -1)
         print(me.cuts)
-        me.ordhand.printReport2(me.ordersSimple)
+        me.ordhand.printReport3(me.ordersSimple)
 
 
     #Algorimtmo optimizador
