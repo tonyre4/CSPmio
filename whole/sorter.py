@@ -177,8 +177,9 @@ class ordenes:
         v = []
         carord = []
         slotord = []
+        terms = []
 
-        cols = ["idx", "obj", "slots", "carro", "veces", "carord", "slotord"]
+        cols = ["idx", "obj", "slots", "carro", "veces", "carord", "slotord","term"]
 
         for i,u in enumerate(unique):
             c = TODO.count(u)
@@ -189,7 +190,10 @@ class ordenes:
             cr.append(u[2])
             v.append(c)
             carord.append(sum(u[2])-len(u[2]))
-            slotord.append(sum(u[1]) - len(u[1]))
+            #slotord.append(sum(u[1]) - len(u[1]))
+            slotord.append(sum([z**2 for z in u[1]]))
+            t = tuple(np.zeros(len(u[1]),np.uint8).tolist())
+            terms.append(t)
 
         data = {cols[0] : idxs,
                 cols[1] : objs,
@@ -197,7 +201,8 @@ class ordenes:
                 cols[3] : cr,
                 cols[4] : v,
                 cols[5] : carord,
-                cols[6] : slotord}
+                cols[6] : slotord,
+                cols[7] : terms}
 
         df = pd.DataFrame(data, columns = cols)
 
@@ -213,37 +218,88 @@ class ordenes:
             c = int(me.slotCtr%10)
             if c!= 0:
                 maxs.append(int(me.slotCtr%10))
-       
+      
+        wo = []
+ 
+        for i in range(maxc+1): #por cada carro
+            cw = []
+            for ii in range(maxs[i]): #Para el rango maximo de slots por carro
+                #Para encontrar worktags
+                for p in me.ps:
+                    if p.slot == ii+1 and p.car == i+1:
+                        cw.append([ii+1,p.wt])
+                for iiii, sl in enumerate(df.iterrows()): #iterando cada row de cada uno
+                    for iii, sc in enumerate(zip(sl[1].loc["slots"],sl[1].loc["carro"])): #por cada elemento de la tupla de slot y carro
+                        s, c = sc
+                        if c != i+1: #si el carro diferente continua
+                            continue
+                        if s == ii+1: #si el numero del slot de busqueda es el mismo
+                            last = (iiii,iii) # guarda la posicion del row y posicion de la tupla
+                
+                #print("##"*20)
+                #tup = slots.iloc[last[0]].at['term'][last[1]] = ii+1
+                tup = df.iloc[last[0]].at['term']
+                tup = list(tup)
+                #print(tup)
+                tup [last[1]] = ii+1
+                tup = tuple(tup)
+                #print(df)
+                df.iat[last[0],df.columns.get_loc("term")] = tup
+                #print(df)
+                #print("##"*20)
+                
+            wo.append(cw)
+                #print(slots)
+                #exit()
+                
 
-        #for i,ms in enumerate(maxs):
-        #    print("Para carro", i+1)
-        #    if i==0: #Si es el primero
-        #        print(df[df['carro'].apply(lambda x: i+1 == x[0] and all(y == x[0] for y in x) )]) # los exclusivos del primer carro
-        #        print(df[df['carro'].apply(lambda x: i+1 is in x and any(y >  i+1  for y in x) )]) #los que tengan al carro 1 mayores que 1
-        #    elif i+1==len(maxs): #si es el último
-        #        print("Para carro", i+1)
-        #        print(df[df['carro'].apply(lambda x: i+1 == x[0] and all(y == x[0] for y in x) )])
-        #    else: #Si no es el último
-        #        print(df[df['carro'].apply(lambda x: i+1 is in x and any(y >  i+1  for y in x) )]) #los que tengan al carro 1
-        #        print(df[df['carro'].apply(lambda x: i+1 == x[0] and all(y == x[0] for y in x) )]) # los exclusivos del primer carro
-        #        print(df[df['carro'].apply(lambda x: i+1 is in x and any(y >  i+1  for y in x) )]) #los que tengan al carro 1 y los que siguen
-            
-        
-        terminos = []
-
-        for i in range(maxc):
-            for ii in maxs[i]:
-                for r in df.iterable():
-                    for iii in range(len(r["slots"])):
-                        if  
-            
-
-        print(df)
+        me.writeReport(df,wo)
 
 
         #Orden por carros
 
 
+    def writeReport(me,df,wo):
+        
+        ss = "Patrones de corte:\n"
+
+        for r in df.iterrows():
+            r = r[1]
+            ss += "%d veces:\t[" % (r.loc["veces"])
+
+            obj = r.loc["obj"].mydict
+            corts = obj["cortes"]
+            slots = r.loc["slots"]
+            car = r.loc["carro"]
+            term = r.loc["term"]
+
+            for c in zip(corts,slots,car,term):
+                co,s,cr,t = c
+                if t >0:
+                    xx = "**"
+                else:
+                    xx = ""
+                ss += "%.2f {S%d%s}{C%d},\t" % (co,s,xx,cr)
+            
+            ss = ss[:-2] + "]\t---\t[//%.2f//]\t<--\t%.2f%%\n\n" % (obj["scrap"],obj["Porcentaje"])
+    
+        ss += "Sumario de ordenes:\n"
+
+        for i,w in enumerate(wo):
+            ss += "C%d -> [" % (i+1)
+            for ww in w:
+                ss += "S%d - {%s}, " %(ww[0],ww[1])
+            ss =  ss[:-2] + "]\n"
+
+        ss += "\n"
+            #print(ss)
+            #print(obj)
+            #exit()
+
+
+        print(ss)
+
+        me.df = df
 
 
 
@@ -310,6 +366,7 @@ class ordenes:
 class persiana:
     def __init__(me, feats, np):
         me.feats = feats
+        me.wt = feats.loc["WorkOrderNumber"]
         me.np = np
         me.nps = me.np.split("-")
         me.color = me.nps[1]
